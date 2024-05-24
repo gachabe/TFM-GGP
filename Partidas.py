@@ -1,5 +1,6 @@
 import pyswip as ps
 from Agentes import Legal, Aleatorio, Ansioso
+from MCTS import MonteCarlo
 prolog = ps.Prolog()
 
 
@@ -14,35 +15,40 @@ class Partida:
         self.juego = juego
         self.tiempo_turno = tiempo_turno
         self.ruta_reglas = r"juegos/" + juego + ".pl"
-        self.agentes = self.crear_agentes(agentes) #Hay que cambiar esto para comprobar que es una lista de clase Agente
-
+        self.agentes = self.crear_agentes(agentes)
         self.partida = r"partidas/"+juego+".pl"
         self.reglas = self.abrir_reglas()
 
     def __str__(self):
         return f"Una partida de {self.juego} y juegan {self.agentes}"
 
-    def crear_agentes(self,lista):#Por mejorar
-        def crear_instancias(lista,roles):
+    def crear_agentes(self, lista):  # Por mejorar
+        def crear_instancias(lista, roles):
             instancias = []
-            for elemento,rol  in zip(lista,roles):
-                if elemento == "Ansioso":
-                    instancia = Ansioso(reglas = self.ruta_reglas,rol =rol)
-                elif elemento == "Legal":
-                    instancia = Legal(rol=rol)
-                elif elemento == "Aleatorio":
-                    instancia = Aleatorio(rol=rol)
-                else:
-                    print(f"Error: Elemento desconocido '{elemento}'")
-                    continue
-                instancias.append(instancia)
+            for elemento, rol in zip(lista, roles):
+                instancia = None
+
+                match elemento:
+                    case "Ansioso":
+                        instancia = Ansioso(reglas=self.ruta_reglas, rol=rol)
+                    case "Legal":
+                        instancia = Legal(rol=rol)
+                    case "Aleatorio":
+                        instancia = Aleatorio(rol=rol)
+                    case "MonteCarlo":
+                        instancia = MonteCarlo(reglas=self.ruta_reglas, rol=rol)
+                    case _:
+                        print(f"Error: Elemento desconocido '{elemento}'")
+
+                if instancia is not None:
+                    instancias.append(instancia)
+
             return instancias
         prolog.consult(self.ruta_reglas, catcherrors=True)
-        roles = []
+
         query = prolog.query("role(X)")
-        for rol in query:
-            roles.append(rol['X'])
-        query.close()
+        roles = [rol['X'] for rol in query]
+
         return crear_instancias(lista,roles)
 
     def abrir_reglas(self):
@@ -65,23 +71,21 @@ class Partida:
         return aux
 
     def buscar_acciones(self, agente):
-
         prolog.consult(self.partida, catcherrors=True)
         acciones = []
         query = prolog.query("legal("+agente.rol+",X)")
-
         for busqueda in query:
             acciones.append(busqueda["X"])
         query.close()
         agente.accionesLegales(acciones)
         return acciones
 
-    def siguiente_estado(self):# Esto habra que cambiarlo cuadno haga los agentes
+    def siguiente_estado(self, estado):# Esto habra que cambiarlo cuadno haga los agentes
         prolog.consult(self.partida, catcherrors=False)
         sig_estado = []
         for agente in self.agentes:
             self.buscar_acciones(agente)
-            accion = agente.turno()
+            accion = agente.turno(estado)
             prolog.assertz("does("+agente.rol +","+accion+")")
         query = prolog.query("next(X)")
         for busqueda in query:
@@ -108,19 +112,6 @@ class Partida:
                 inicio.append(estado)
         #return inicio, lista_reglas
         return
-    def buscar_roles(self):
-        """
-        Este método busca los roles posibles y los asigna a los distintos agentes.
-        """
-        prolog.consult(self.partida, catcherrors=False)
-        roles = []
-        query = prolog.query("role(X)")
-        for rol in query:
-            roles.append(rol['X'])
-        query.close()
-        #for agente, rol in zip(self.agentes, roles):
-         #   agente.rol = rol
-        return roles
 
     def siguiente_turno(self,estados):
         with open(self.partida, "w") as partida:
@@ -130,27 +121,18 @@ class Partida:
                 partida.write(estado)
         return
 
-    def actualizar_agentes(self):
-        for agente in self.agentes:
-            agente.reglas = self.ruta_reglas
-            if hasattr(agente, 'reset'):
-                agente.reset()
-
-
-
     def jugar_partida(self,muestra=False):
         self.generar_partida()
         print("Comienza la partida, el estado inicial es: ", self.estado_inicial())
-
-        roles = self.buscar_roles()
         for agente in self.agentes:
-            if hasattr(agente, 'reset'):
-                agente.reset()
+            agente.reset()
         prolog.consult(self.partida,catcherrors=False)
         X = (not bool(list(prolog.query("terminal"))))
+
+        estado = self.estado_inicial()
         #X = True
         while X:
-            estado = self.siguiente_estado()
+            estado = self.siguiente_estado(estado)
             if muestra:
                 print(estado)
             self.siguiente_turno(estado)
@@ -167,18 +149,18 @@ class Partida:
 
 #Antonio = Ansioso("Nim","uno")
 #Raquel = Ansioso("Nim","dos") #Hay que mejorar el rol del jugador Anioso
-A = Partida("Nim",agentes =["Ansioso","Ansioso"])
+A = Partida("Nim",agentes =["Ansioso","Legal"])
 
 #A.generar_partida()
-legal = 0
-aleatorio = 0
-for _ in range(10):
+uno = 0
+dos = 0
+for _ in range(1):
     x = A.jugar_partida(muestra=True)
     if x == "uno":
-        legal +=1
+        uno +=1
     else:
-        aleatorio +=1
-print(f"El jugador uno  ha ganado {legal} veces y el otro {aleatorio}")
+        dos +=1
+print(f"El jugador uno  ha ganado {uno} veces y el otro {dos}")
 
 
 

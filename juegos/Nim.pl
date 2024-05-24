@@ -1,3 +1,4 @@
+
 role(uno).
 role(dos).
 valor(1).
