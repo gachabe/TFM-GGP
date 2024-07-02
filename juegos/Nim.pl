@@ -15,7 +15,7 @@ base(control(dos)).
 input(R, take(M,N)) :- role(R) , valor(M) , cantidad(N).
 input(R, noop) :- role(R).
 init(col(1,3)).
-init(col(2,0)).
+init(col(2,1)).
 init(col(3,0)).
 init(control(uno)).
 legal(W, take(X,Y)) :- (col(X,C)) , cantidad(Y), (control(W)),Y =< C.

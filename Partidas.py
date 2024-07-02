@@ -1,7 +1,6 @@
 import pyswip as ps
 from Agentes import Legal, Aleatorio, Ansioso
 from MCTS import MonteCarlo
-prolog = ps.Prolog()
 
 
 class Partida:
@@ -12,12 +11,14 @@ class Partida:
     prolog, lanzar las consultas y usar assertz para y generando los nuevos estados.
     """
     def __init__(self, juego, tiempo_turno=None, agentes=None):
+        self. prolog = ps.Prolog()
         self.juego = juego
         self.tiempo_turno = tiempo_turno
         self.ruta_reglas = r"juegos/" + juego + ".pl"
+        self.prolog.consult(self.ruta_reglas, catcherrors=False)
         self.agentes = self.crear_agentes(agentes)
-        self.partida = r"partidas/"+juego+".pl"
-        self.reglas = self.abrir_reglas()
+        self.estado_inicio = self.estado_inicial()
+        self.prolog.consult(self.ruta_reglas, catcherrors=False)
 
     def __str__(self):
         return f"Una partida de {self.juego} y juegan {self.agentes}"
@@ -27,7 +28,6 @@ class Partida:
             instancias = []
             for elemento, rol in zip(lista, roles):
                 instancia = None
-
                 match elemento:
                     case "Ansioso":
                         instancia = Ansioso(reglas=self.ruta_reglas, rol=rol)
@@ -36,122 +36,101 @@ class Partida:
                     case "Aleatorio":
                         instancia = Aleatorio(rol=rol)
                     case "MonteCarlo":
-                        instancia = MonteCarlo(reglas=self.ruta_reglas, rol=rol)
+                        instancia = MonteCarlo(reglas=self.ruta_reglas, rol="uno", tiempo=self.tiempo_turno)
                     case _:
                         print(f"Error: Elemento desconocido '{elemento}'")
-
                 if instancia is not None:
                     instancias.append(instancia)
-
             return instancias
-        prolog.consult(self.ruta_reglas, catcherrors=True)
-
-        query = prolog.query("role(X)")
+        query = self.prolog.query("role(X)")
         roles = [rol['X'] for rol in query]
-
         return crear_instancias(lista,roles)
 
-    def abrir_reglas(self):
-        """
-        Con este método abriremos las reglas
-        """
-        lineas = []
-        with open(self.ruta_reglas, "r") as archivo:
-            for linea in archivo:
-                lineas.append(linea)
-        return lineas
-
     def estado_inicial(self):
-        prolog.consult(self.ruta_reglas, catcherrors=False)
-        estados = prolog.query("init(X)")
+        self.prolog.consult(self.ruta_reglas, catcherrors=False)
+        estados = self.prolog.query("init(X)")
         aux = []
         for estado in estados:
             aux.append(estado["X"])
         estados.close()
         return aux
 
-    def buscar_acciones(self, agente):
-        prolog.consult(self.partida, catcherrors=True)
+    def conHecho(self,estado,f):
+        try:
+            for hecho in estado:
+                self.prolog.assertz(hecho)
+            return f()
+        finally:
+            for hecho in estado:
+                self.prolog.retract(hecho)
+
+    def buscar_acciones(self, estado, agente):
+        """
+        Le pasa a cada agente las acciones legales que pueden realizar
+        """
+        def aux():
+            acciones = []
+            query = self.prolog.query("legal("+agente.rol+",X)")
+            for busqueda in query:
+                acciones.append(busqueda["X"])
+            query.close()
+            agente.accionesLegales(acciones)
+            return acciones
+        return self.conHecho(estado, aux)
+
+    def siguiente_estado(self, estado, muestra = False):
         acciones = []
-        query = prolog.query("legal("+agente.rol+",X)")
-        for busqueda in query:
-            acciones.append(busqueda["X"])
-        query.close()
-        agente.accionesLegales(acciones)
-        return acciones
-
-    def siguiente_estado(self, estado):# Esto habra que cambiarlo cuadno haga los agentes
-        prolog.consult(self.partida, catcherrors=False)
-        sig_estado = []
         for agente in self.agentes:
-            self.buscar_acciones(agente)
+            self.buscar_acciones(estado, agente)
             accion = agente.turno(estado)
-            prolog.assertz("does("+agente.rol +","+accion+")")
-        query = prolog.query("next(X)")
-        for busqueda in query:
-                sig_estado.append(busqueda["X"]+".\n")
-        query.close()
-        prolog.retractall("does(X,Y)")
-        return sig_estado
+            if muestra:
+                print(f"El agente {agente} hizo {accion}")
+            acciones.append(accion)
+        def aux():
+            sig_estado = []
+            for agente, accion in zip(self.agentes, acciones):
+                self.prolog.assertz("does(" + agente.rol + "," + accion + ")")
+                agente.acciones_contrarias = tuple((agente.rol, accion) for agente, accion in zip(self.agentes, acciones))
+            query = self.prolog.query("next(X)")
+            for busqueda in query:
+                sig_estado.append(busqueda["X"])
+            query.close()
+            self.prolog.retractall("does(X,Y)")
 
-    def generar_partida(self):
-        """
-        Este es el método que nos generará la partida, recibirá los agentes y simulará los turnos y acciones.
-        """
-        reglas = self.reglas
-        estado_inicial = self.estado_inicial()
-        inicio = []
-        lista_reglas = []
-        with open(self.partida, "w") as archivo:
-            for linea in reglas:
-                if "init" not in linea:
-                    archivo.write(linea)
-                    lista_reglas.append(linea)
-            for estado in estado_inicial:
-                archivo.write(estado+'.\n')
-                inicio.append(estado)
-        #return inicio, lista_reglas
-        return
+            return sig_estado
+        return self.conHecho(estado, aux)
 
-    def siguiente_turno(self,estados):
-        with open(self.partida, "w") as partida:
-            for regla in self.reglas:
-                partida.write(regla)
-            for estado in estados:
-                partida.write(estado)
-        return
+    def final(self,estado):
+        def aux():
+            return not bool(list(self.prolog.query("terminal")))
+        return self.conHecho(estado, aux)
 
-    def jugar_partida(self,muestra=False):
-        self.generar_partida()
-        print("Comienza la partida, el estado inicial es: ", self.estado_inicial())
+    def ganador(self,estado):
+        def aux():
+            query = self.prolog.query("ganar(X)")
+            for i in query:
+                ganador = i["X"]
+            return ganador
+        return self.conHecho(estado,aux)
+
+    def jugar_partida(self, muestra=False):
+        #self.generar_partida()
+        print("Comienza la partida, el estado inicial es: ", self.estado_inicio)
         for agente in self.agentes:
             agente.reset()
-        prolog.consult(self.partida,catcherrors=False)
-        X = (not bool(list(prolog.query("terminal"))))
-
-        estado = self.estado_inicial()
-        #X = True
-        while X:
-            estado = self.siguiente_estado(estado)
+        estado = self.estado_inicio
+        final = self.final(estado)
+        while final:
+            estado = self.siguiente_estado(estado, muestra)
             if muestra:
                 print(estado)
-            self.siguiente_turno(estado)
-            prolog.consult(self.partida)
-            X = (not bool(list(prolog.query("terminal"))))
-        query = prolog.query("ganar(X)")
-        for i in query:
-            ganador = i["X"]
+            #self.siguiente_turno(estado)
+            final = self.final(estado)
+        ganador = self.ganador(estado)
         #print(f"Ha ganado el jugador {ganador}, cuyo agente es {self.agentes[roles.index(ganador)]}") #Se podria mejorar poniendo tambien el nombre del agnte
         return ganador
 
-
-
-
-#Antonio = Ansioso("Nim","uno")
-#Raquel = Ansioso("Nim","dos") #Hay que mejorar el rol del jugador Anioso
-A = Partida("Nim",agentes =["Ansioso","Legal"])
-
-#A.generar_partida()
+A = Partida("Nim",agentes =["Legal","MonteCarlo"], tiempo_turno=0.5)
 uno = 0
 dos = 0
 for _ in range(1):
@@ -160,14 +139,6 @@ for _ in range(1):
         uno +=1
     else:
         dos +=1
+
 print(f"El jugador uno  ha ganado {uno} veces y el otro {dos}")
-
-
-
-#prolog.consult(r"partidas/Nim.pl", catcherrors=True)
-#X = bool(list(prolog.query("terminal")))
-#Y = prolog.query("control(X)")
-
-#print(((X)))
-
-
+#print(A.siguiente_estado(['col(1, 1)', 'col(2, 0)', 'col(3, 0)', 'control(dos)']))
