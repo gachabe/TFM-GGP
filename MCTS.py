@@ -26,7 +26,7 @@ class MonteCarlo(Agentes):
         return roles
 
     def reset(self):
-        pass
+        self.arbol = None
 
     def turno(self, estado):
         if self.arbol is not None:
@@ -106,28 +106,6 @@ class MonteCarlo(Agentes):
 
         return arbol
 
-
-    # def generar_estado(self, estado, accion):
-    #     """
-    #     Estado será una lista con una descripción de un estado y dada la lista de acciones devolverá el nuevo estado
-    #     """
-    #     estado_inicio = estado[:]
-    #     self.prolog.consult(self.reglas, catcherrors=True)
-    #     for hecho in estado:
-    #         self.prolog.assertz(hecho)
-    #     for hecho in accion:
-    #         self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
-    #     query = self.prolog.query("next(X)")
-    #     estado = []
-    #     for x in query:
-    #         estado.append(x["X"])
-    #         #print(estado)
-    #     query.close()
-    #     for hecho in estado_inicio:
-    #         self.prolog.retract(hecho)
-    #     for hecho in accion:
-    #         self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
-    #     return estado
 
     def generar_estado(self,estado,accion):
         estado_inicio = estado[:]
