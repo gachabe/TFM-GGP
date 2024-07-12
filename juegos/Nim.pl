@@ -1,22 +1,19 @@
-
 role(uno).
 role(dos).
-valor(1).
-valor(2).
-valor(3).
+columna(1).
+columna(2).
+columna(3).
 cantidad(1).
 cantidad(2).
 cantidad(3).
-base(col(M,_)) :- valor(M).
-base(col(M,_)) :- valor(M).
-base(col(M,_)) :- valor(M).
+base(col(M,_)) :- columna(M).
 base(control(uno)).
 base(control(dos)).
-input(R, take(M,N)) :- role(R) , valor(M) , cantidad(N).
+input(R, take(M,N)) :- role(R) , columna(M) , cantidad(N).
 input(R, noop) :- role(R).
 init(col(1,3)).
-init(col(2,1)).
-init(col(3,0)).
+init(col(2,2)).
+init(col(3,1)).
 init(control(uno)).
 legal(W, take(X,Y)) :- (col(X,C)) , cantidad(Y), (control(W)),Y =< C.
 legal(uno, noop) :- (control(dos)).

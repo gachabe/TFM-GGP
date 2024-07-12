@@ -9,6 +9,9 @@ acciones, dependiendo del agente se seleccionará una u otra y enviará esta a l
 """
 
 class Agentes:
+    """
+    Clase basica
+    """
     def __init__(self,rol=None,acciones=None, reglas=None):
         self.rol = rol
         self.acciones = acciones
@@ -46,34 +49,27 @@ class Aleatorio(Agentes):
 
 class Ansioso(Agentes):
     """
-    Este agente creará todo el árbol de posibles estados y buscará si tiene una ruta óptima.
+    Este agente creará todo el árbol de posibles estados y buscará si tiene una ruta en la que gane.
     Solo será viable en juegos pequeños. En lista_acciones guardaremos todas las posibles acciones
     que podrán realizar los jugadores. Cuando el juego sea simétrico coincidirá con acciones.
     Es mejorable puesto que solo ordena las politicas en ganable y no ganables pero no prioriza las fuertemente ganables
     """
-    def __init__(self,reglas = None,rol=None,acciones =None):
+    def __init__(self, reglas=None, rol=None, acciones=None):
         super().__init__(rol, acciones)
         self.prolog = ps.Prolog()
         self.reglas = reglas
         self.roles = self.busca_roles()
         self.rama = self.ramas()
-       # self.lista_acciones = self.generar_lista_acciones()  # Acciones por rol para un estado dado
         self.lista_politica = self.generar_politica()
         self.politica_actual = self.lista_politica[0]
         self.copia1 = deepcopy(self.lista_politica)
         self.copia2 = deepcopy(self.politica_actual)
 
-
-
-
     def reset(self):
-
         self.lista_politica = deepcopy(self.copia1)
         self.politica_actual = deepcopy(self.copia2)
 
-
-
-    def turno(self,estado):
+    def turno(self, estado):
         """
         Comprobará si la siguiente acción de su politica actual está entre sus acciones legales y la realizará eliminando
         el primer miembro de su politica actual, de no ser así contará cuantos turnos lleva con esta política,
@@ -88,27 +84,20 @@ class Ansioso(Agentes):
             print("voy a hacer: ", turno)
             return turno
         else:
-            #print("Soy", self.rol, " y cambio de politica")
             numero_turnos =len(self.politica_actual)- len(self.lista_politica[0])
             self.lista_politica = self.lista_politica[1:]
             self.politica_actual = self.lista_politica[0][numero_turnos:]
             return self.turno(estado)
 
     def escoger_accion(self, acciones):
-        #  acciones = acciones[0] se pondra asi cuando mejore el ansioso, borrar el de montecarlo
         return [x for x in acciones if x[0] == self.rol][0][1]
 
     def busca_roles(self):
         self.prolog.consult(self.reglas, catcherrors=True)
         query = self.prolog.query("role(X)")
-        roles = []
-        for rol in query:
-            roles.append(rol["X"])
+        roles = [rol["X"] for rol in query]
         query.close()
         return roles
-
-
-
 
     def generar_lista_acciones(self, estado = []):
         """
@@ -123,9 +112,7 @@ class Ansioso(Agentes):
                     estado.append(x["X"])
                 inicio.close()
             listaAcciones = self.prolog.query("legal(X,Y)")
-            lista_acciones = []
-            for jugador in listaAcciones:
-                lista_acciones.append((jugador["X"], jugador["Y"]))
+            lista_acciones = [(respuesta["X"], respuesta["Y"]) for respuesta in listaAcciones]
             listaAcciones.close()
             dic = {rol: [accion for accion in lista_acciones if accion[0] == rol] for rol in self.roles}
             valores = list(dic.values())
@@ -133,12 +120,11 @@ class Ansioso(Agentes):
             return lista_acciones
         return self.conHecho(estado, aux)
 
-
-    def generar_estado(self,estado,accion):
+    def generar_estado(self, estado, accion):
         """
         Estado será una lista con una descripción de un estado y dada la lista de acciones devolverá el nuevo estado
         """
-        self.prolog.consult(self.reglas,catcherrors=True)
+        self.prolog.consult(self.reglas, catcherrors=True)
         def aux():
             for hecho in accion:
                 self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
@@ -146,15 +132,13 @@ class Ansioso(Agentes):
             estado = []
             for x in query:
                 estado.append(x["X"])
-                # print(estado)
             query.close()
             for hecho in accion:
                 self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
             return estado
-        return self.conHecho(estado,aux) # Puede ser que haya que poner estado_inicio
+        return self.conHecho(estado, aux)
 
-
-    def conHecho(self,estado,f):
+    def conHecho(self ,estado, f):
         try:
             for hecho in estado:
                 self.prolog.assertz(hecho)
@@ -175,25 +159,20 @@ class Ansioso(Agentes):
             return recompensa
         return self.conHecho(estado, aux)
 
-
-    def generar_arbol(self, est = []):
+    def generar_arbol(self, est=[]):
         self.prolog.consult(self.reglas, catcherrors=True)
         if est == []:
             inicio = self.prolog.query("init(X)")
             for x in inicio:
                 est.append(x["X"])
             inicio.close()
-        #print("acciones,",self.generar_lista_acciones(est))
         if self.generar_lista_acciones(est) == []:
-
-            #return (est,self.generar_recompensa(est))
             return self.generar_recompensa(est)
         else:
-            #return (est, {accion: self.generar_arbol(self.generar_estado(est, accion)) for accion in self.generar_lista_acciones(est)})
             return {accion: self.generar_arbol(self.generar_estado(est, accion))
                     for accion in self.generar_lista_acciones(est)}
 
-    def ramas(self,arbol=None, keys=None, result=None):
+    def ramas(self, arbol=None, keys=None, result=None):
         """
         Recibe un arbol y devuelve una lista de listas donde cada sublista es una posible política
         """
@@ -230,8 +209,8 @@ def visualize(root, indent=0):
             visualize(v, indent+2)
     else:
         print("-"*indent + repr(root))
-#str = {(('uno', 'take(1, 1)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): {(('uno', 'take(1, 1)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}, (('uno', 'noop'), ('dos', 'take(1, 2)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 2)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 3)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}
 
+#str = {(('uno', 'take(1, 1)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): {(('uno', 'take(1, 1)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}, (('uno', 'noop'), ('dos', 'take(1, 2)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 2)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 3)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}
 #paco = Ansioso("juegos/Nim",rol="uno")
 #print(paco.generar_estado(["control(uno)","col(1,1)","col(2,3)","col(3,5)"],(('uno', 'take(1, 1)'), ('dos', 'noop'))))
 #print(paco.generar_recompensa(["control(uno)","col(1,0)","col(2,0)","col(3,0)"]))

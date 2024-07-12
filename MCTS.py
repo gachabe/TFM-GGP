@@ -5,13 +5,13 @@ from random import choice
 import pyswip
 
 class MonteCarlo(Agentes):
-    def __init__(self,rol=None,acciones=None,reglas=None,tiempo=None):
+    def __init__(self, rol=None, acciones=None, reglas=None, tiempo=None):
         super().__init__(rol, acciones)
         self.rol = rol
         self.acciones = acciones
         self.prolog = pyswip.Prolog()
         self.reglas = reglas
-        self.prolog.consult(self.reglas,catcherrors=True) # Si tapo aqui sale en todas las funciones que funconan el mismo error q en la q nofunciona the more you know...
+        self.prolog.consult(self.reglas, catcherrors=True)
         self.roles = self.busca_roles()
         self.tiempo = tiempo
         self.arbol = None
@@ -19,9 +19,7 @@ class MonteCarlo(Agentes):
 
     def busca_roles(self):
         query = self.prolog.query("role(X)")
-        roles = []
-        for rol in query:
-            roles.append(rol["X"])
+        roles = [rol["X"] for rol in query]
         query.close()
         return roles
 
@@ -29,23 +27,33 @@ class MonteCarlo(Agentes):
         self.arbol = None
 
     def turno(self, estado):
+        """
+        Esta función gestiona el turno del agente, primero comprueba si existe un árbol, en ese caso si ha
+        habido un turno previo intenta ir a ese subarbol para seguir generando pruebas de forma aleatoria.
+        Seguidamente procede como el agente ansioso, devuelve la acción que mayor valor da su camino mediante
+        la media aritmética.
+        """
         if self.arbol is not None:
             try:
                 self.arbol = self.arbol[2][self.acciones_contrarias]
             except KeyError as e:
                 self.arbol = None
-        self.arbol = self.generar_arbol(arbol = self.arbol,estado = estado) #Aqui ta el error
+        self.arbol = self.generar_arbol(arbol = self.arbol, estado=estado)
         dic = self.arbol[2]
-        acciones = [(x,y[1]) for x,y in dic.items()]
+        acciones = [(x, y[1]) for x, y in dic.items()]
         lista_ordenada = sorted(acciones, key=lambda x: x[1], reverse=True)
         turno = self.escoger_accion(lista_ordenada[0])
         return turno
 
     def escoger_accion(self, acciones):
+        """
+        :param acciones: ((accion, rol), valor)
+        :return: rol
+        """
         acciones = acciones[0]
         return [x for x in acciones if x[0] == self.rol][0][1]
 
-    def conHecho(self,estado,f):
+    def conHecho(self, estado, f):
         try:
             for hecho in estado:
                 self.prolog.assertz(hecho)
@@ -57,17 +65,15 @@ class MonteCarlo(Agentes):
     def generar_lista_acciones(self, estado = []):
         def aux():
             listaAcciones = self.prolog.query("legal(X,Y)")
-            lista_acciones = []
-            for jugador in listaAcciones:
-                lista_acciones.append((jugador["X"], jugador["Y"]))
+            lista_acciones = [(respuesta["X"], respuesta["Y"]) for respuesta in listaAcciones]
             listaAcciones.close()
             dic = {rol: [accion for accion in lista_acciones if accion[0] == rol] for rol in self.roles}
             valores = list(dic.values())
             lista_acciones = list(product(*valores))
             return lista_acciones
-        return self.conHecho(estado,aux)
+        return self.conHecho(estado, aux)
 
-    def generar_arbol(self, arbol=None,estado=None):
+    def generar_arbol(self, arbol=None, estado=None):
         """
         Arbol -> (Estado,valor,{accion:Arbol})
         valor -> \sum valorHijos \div numHijos
@@ -75,20 +81,17 @@ class MonteCarlo(Agentes):
         def generar_hoja(arbol):
             est, valor, dic = arbol
             acciones = (self.generar_lista_acciones(est))
-
             if not acciones:  # Esa hoja era terminal
-
                 return (est, self.generar_recompensa(est), {})
             else:
                 accion = choice(acciones)
                 estN = self.generar_estado(est, accion)
-                if accion in dic.keys(): # Si la rama ya ha sido visitada
+                if accion in dic.keys():  # Si la rama ya ha sido visitada
                     dic.update({accion: generar_hoja(dic[accion])})
                     return (est, self.generar_valor(dic), dic)
                 else:
                     dic.update({accion: generar_hoja((estN, self.generar_valor(dic), {}))})
                     return (est, self.generar_valor(dic),dic)
-
         tinicio = time()
         while self.tiempo > time() - tinicio:
             if arbol is None: #Comienza el algoritmo
@@ -97,32 +100,26 @@ class MonteCarlo(Agentes):
                     inicio = self.prolog.query("init(X)")
                     for x in inicio:
                         estado.append(x["X"])
-                arbol = (estado,0,{})
-
+                arbol = (estado, 0, {})
             else:
                 generar_hoja(arbol)
-        est,valor,dic = arbol
-        arbol = (est,self.generar_valor(dic),dic)
-
+        est, valor, dic = arbol
+        arbol = (est,self.generar_valor(dic), dic)
         return arbol
 
-
     def generar_estado(self,estado,accion):
-        estado_inicio = estado[:]
         def aux():
             for hecho in accion:
                 self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
             query = self.prolog.query("next(X)")
-            estado = []
-            for x in query:
-                estado.append(x["X"])
+            estado = [hecho["X"] for hecho in query]
             query.close()
             for hecho in accion:
                 self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
             return estado
         return self.conHecho(estado, aux)
 
-    def generar_recompensa(self,estados):
+    def generar_recompensa(self, estados):
         self.prolog.consult(self.reglas, catcherrors=True)
         def aux():
             query = self.prolog.query(f"goal({self.rol},X)")
@@ -131,9 +128,7 @@ class MonteCarlo(Agentes):
                 recompensa = x["X"]
             query.close()
             return recompensa
-        return self.conHecho(estados,aux)
-
-
+        return self.conHecho(estados, aux)
 
     def generar_valor(self,arboles):
         """
