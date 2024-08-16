@@ -1,27 +1,20 @@
 from Agentes import Agentes
 from time import time
-from itertools import product
 from random import choice
 import pyswip
 
 class MonteCarlo(Agentes):
     def __init__(self, rol=None, acciones=None, reglas=None, tiempo=None):
-        super().__init__(rol, acciones)
+        super().__init__(rol, acciones,reglas)
         self.rol = rol
         self.acciones = acciones
         self.prolog = pyswip.Prolog()
-        self.reglas = reglas
         self.prolog.consult(self.reglas, catcherrors=True)
         self.roles = self.busca_roles()
         self.tiempo = tiempo
         self.arbol = None
         self.acciones_contrarias = None
 
-    def busca_roles(self):
-        query = self.prolog.query("role(X)")
-        roles = [rol["X"] for rol in query]
-        query.close()
-        return roles
 
     def reset(self):
         self.arbol = None
@@ -52,26 +45,6 @@ class MonteCarlo(Agentes):
         """
         acciones = acciones[0]
         return [x for x in acciones if x[0] == self.rol][0][1]
-
-    def conHecho(self, estado, f):
-        try:
-            for hecho in estado:
-                self.prolog.assertz(hecho)
-            return f()
-        finally:
-            for hecho in estado:
-                self.prolog.retract(hecho)
-
-    def generar_lista_acciones(self, estado = []):
-        def aux():
-            listaAcciones = self.prolog.query("legal(X,Y)")
-            lista_acciones = [(respuesta["X"], respuesta["Y"]) for respuesta in listaAcciones]
-            listaAcciones.close()
-            dic = {rol: [accion for accion in lista_acciones if accion[0] == rol] for rol in self.roles}
-            valores = list(dic.values())
-            lista_acciones = list(product(*valores))
-            return lista_acciones
-        return self.conHecho(estado, aux)
 
     def generar_arbol(self, arbol=None, estado=None):
         """
@@ -107,17 +80,6 @@ class MonteCarlo(Agentes):
         arbol = (est,self.generar_valor(dic), dic)
         return arbol
 
-    def generar_estado(self,estado,accion):
-        def aux():
-            for hecho in accion:
-                self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
-            query = self.prolog.query("next(X)")
-            estado = [hecho["X"] for hecho in query]
-            query.close()
-            for hecho in accion:
-                self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
-            return estado
-        return self.conHecho(estado, aux)
 
     def generar_recompensa(self, estados):
         self.prolog.consult(self.reglas, catcherrors=True)

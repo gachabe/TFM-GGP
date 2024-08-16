@@ -16,8 +16,11 @@ class Agentes:
         self.rol = rol
         self.acciones = acciones
         self.reglas = reglas
+        self.prolog = ps.Prolog()
+        self.prolog.consult(self.reglas, catcherrors=True)
+        self.roles = self.busca_roles()
 
-    def accionesLegales(self,acciones):
+    def accionesLegales(self, acciones):
         self.acciones = acciones
 
     def __str__(self):
@@ -26,23 +29,74 @@ class Agentes:
     def reset(self):
         pass
 
+    def busca_roles(self):
+        query = self.prolog.query("role(X)")
+        roles = [rol["X"] for rol in query]
+        query.close()
+        return roles
+
+    def generar_estado(self,estado,accion):
+        if not estado:
+            inicio = self.prolog.query("init(X)")
+            estado = [hecho["X"] for hecho in inicio]
+            inicio.close()
+        def aux():
+            for hecho in accion:
+                self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
+            query = self.prolog.query("next(X)")
+            estado = [hecho["X"] for hecho in query]
+            query.close()
+            for hecho in accion:
+                self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
+            return estado
+        return self.conHecho(estado, aux)
+
+    def conHecho(self, estado, f):
+        try:
+            for hecho in estado:
+                self.prolog.assertz(hecho)
+            return f()
+        finally:
+            for hecho in estado:
+                self.prolog.retract(hecho)
+
+
+    def generar_lista_acciones(self, estado = []):
+        """
+           Devuelve una lista de duplas, cada elemento de la dupla es un rol y una accion posible
+              [((rol1,accion1),(rol2,accion2)),...]
+        """
+
+        if not estado:
+            inicio = self.prolog.query("init(X)")
+            estado = [hecho["X"] for hecho in inicio]
+            inicio.close()
+        def aux():
+            listaAcciones = self.prolog.query("legal(X,Y)")
+            lista_acciones = [(respuesta["X"], respuesta["Y"]) for respuesta in listaAcciones]
+            listaAcciones.close()
+            dic = {rol: [accion for accion in lista_acciones if accion[0] == rol] for rol in self.roles}
+            valores = list(dic.values())
+            lista_acciones = list(product(*valores))
+            return lista_acciones
+        return self.conHecho(estado, aux)
+
 class Legal(Agentes):
     """
     El agente legal jugará siempre la primera acción posible.
     """
-    def __init__(self, rol=None, acciones=None):
-        super().__init__(rol, acciones)
+    def __init__(self, rol=None, acciones=None,reglas=None):
+        super().__init__(rol, acciones, reglas)
 
     def turno(self, estado):
-
         return self.acciones[0]
 
 class Aleatorio(Agentes):
     """
     El agente aleatorio jugará siempre una acción aleatoria
     """
-    def __init__(self, rol=None, acciones=None):
-        super().__init__(rol, acciones)
+    def __init__(self, rol=None, acciones=None,reglas = None):
+        super().__init__(rol, acciones, reglas)
 
     def turno(self,estado):
         return choice(self.acciones)
@@ -55,15 +109,16 @@ class Ansioso(Agentes):
     Es mejorable puesto que solo ordena las politicas en ganable y no ganables pero no prioriza las fuertemente ganables
     """
     def __init__(self, reglas=None, rol=None, acciones=None):
-        super().__init__(rol, acciones)
+        super().__init__(rol, acciones, reglas)
         self.prolog = ps.Prolog()
-        self.reglas = reglas
         self.roles = self.busca_roles()
         self.rama = self.ramas()
         self.lista_politica = self.generar_politica()
         self.politica_actual = self.lista_politica[0]
         self.copia1 = deepcopy(self.lista_politica)
         self.copia2 = deepcopy(self.politica_actual)
+        self.prolog.consult(self.reglas)
+
 
     def reset(self):
         self.lista_politica = deepcopy(self.copia1)
@@ -84,7 +139,7 @@ class Ansioso(Agentes):
             print("voy a hacer: ", turno)
             return turno
         else:
-            numero_turnos =len(self.politica_actual)- len(self.lista_politica[0])
+            numero_turnos = len(self.politica_actual)- len(self.lista_politica[0])
             self.lista_politica = self.lista_politica[1:]
             self.politica_actual = self.lista_politica[0][numero_turnos:]
             return self.turno(estado)
@@ -92,63 +147,11 @@ class Ansioso(Agentes):
     def escoger_accion(self, acciones):
         return [x for x in acciones if x[0] == self.rol][0][1]
 
-    def busca_roles(self):
-        self.prolog.consult(self.reglas, catcherrors=True)
-        query = self.prolog.query("role(X)")
-        roles = [rol["X"] for rol in query]
-        query.close()
-        return roles
 
-    def generar_lista_acciones(self, estado = []):
-        """
-           Devuelve una lista de duplas, cada elemento de la dupla es un rol y una accion posible
-              [((rol1,accion1),(rol2,accion2)),...]
-        """
-        self.prolog.consult(self.reglas, catcherrors=True)
-        def aux():
-            if estado == []:
-                inicio = self.prolog.query("init(X)")
-                for x in inicio:
-                    estado.append(x["X"])
-                inicio.close()
-            listaAcciones = self.prolog.query("legal(X,Y)")
-            lista_acciones = [(respuesta["X"], respuesta["Y"]) for respuesta in listaAcciones]
-            listaAcciones.close()
-            dic = {rol: [accion for accion in lista_acciones if accion[0] == rol] for rol in self.roles}
-            valores = list(dic.values())
-            lista_acciones = list(product(*valores))
-            return lista_acciones
-        return self.conHecho(estado, aux)
 
-    def generar_estado(self, estado, accion):
-        """
-        Estado será una lista con una descripción de un estado y dada la lista de acciones devolverá el nuevo estado
-        """
-        self.prolog.consult(self.reglas, catcherrors=True)
-        def aux():
-            for hecho in accion:
-                self.prolog.assertz(f"does({hecho[0]},{hecho[1]})")
-            query = self.prolog.query("next(X)")
-            estado = []
-            for x in query:
-                estado.append(x["X"])
-            query.close()
-            for hecho in accion:
-                self.prolog.retract(f"does({hecho[0]},{hecho[1]})")
-            return estado
-        return self.conHecho(estado, aux)
 
-    def conHecho(self ,estado, f):
-        try:
-            for hecho in estado:
-                self.prolog.assertz(hecho)
-            return f()
-        finally:
-            for hecho in estado:
-                self.prolog.retract(hecho)
 
     def generar_recompensa(self,estado):
-        self.prolog.consult(self.reglas, catcherrors=True)
         def aux():
             recompensa = []
             for roles in self.roles:
@@ -160,11 +163,10 @@ class Ansioso(Agentes):
         return self.conHecho(estado, aux)
 
     def generar_arbol(self, est=[]):
-        self.prolog.consult(self.reglas, catcherrors=True)
         if est == []:
             inicio = self.prolog.query("init(X)")
-            for x in inicio:
-                est.append(x["X"])
+            for hecho in inicio:
+                est.append(hecho["X"])
             inicio.close()
         if self.generar_lista_acciones(est) == []:
             return self.generar_recompensa(est)
@@ -197,7 +199,7 @@ class Ansioso(Agentes):
             return merged_dict
         orden = (lambda x: merge_dicts(x[-1])[self.rol])
         lista = self.ramas()
-        lista.sort(key=orden,reverse=True)
+        lista.sort(key=orden, reverse=True)
         for politica in lista:
             del politica[-1]
         return lista
@@ -215,7 +217,6 @@ def visualize(root, indent=0):
 #print(paco.generar_estado(["control(uno)","col(1,1)","col(2,3)","col(3,5)"],(('uno', 'take(1, 1)'), ('dos', 'noop'))))
 #print(paco.generar_recompensa(["control(uno)","col(1,0)","col(2,0)","col(3,0)"]))
 #visualize(paco.generar_arbol())
-
 #print(paco.ramas()[0])
 
 

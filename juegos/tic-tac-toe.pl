@@ -4,11 +4,12 @@ role(black).
 index(1).
 index(2).
 index(3).
+value(x).
+value(o).
 
 base(cell(M,N,x)) :- index(M) , index(N).
 base(cell(M,N,o)) :- index(M) , index(N).
 base(cell(M,N,b)) :- index(M) , index(N).
-
 base(control(white)).
 base(control(black)).
 
@@ -29,7 +30,7 @@ init(control(white)).
 
 
 
-legal(W, mark(X,Y)) :- (cell(X,Y,b)) , (control(W)).
+legal(W, mark(X,Y)) :- cell(X,Y,b) , control(W).
 legal(white, noop) :- (control(black)).
 legal(black, noop) :- (control(white)).
 
@@ -41,28 +42,23 @@ next(cell(M, N, b)) :- cell(M, N, b), not(does(_, mark(M, N))).
 next(control(white)) :- (control(black)).
 next(control(black)) :- (control(white)).
 
-goal(white, 100) :- line(white) , \+line(black).
-goal(white, 50) :- \+line(white) , \+line(black).
-goal(white, 0) :- \+line(white) , line(black).
-goal(black, 0) :- goal(white, 100).
-goal(black, 50) :- goal(white, 50).
-goal(black, 100) :- goal(white, 0).
+goal(white, 100) :- line(x), \+line(o).
+goal(white, 50) :- \+line(x), \+line(o).
+goal(white, 0) :- \+line(x), line(o).
+goal(black, 0) :- line(x), \+line(o).
+goal(black, 50) :- \+line(x), \+line(o).
+goal(black, 100) :- \+line(x), line(o).
 
-line(W) :- row(W).
-line(W) :- column(W).
-line(W) :- diagonal(W).
+line(Z) :- row(_,Z), value(Z).
+line(Z) :- column(_,Z), value(Z).
+line(Z) :- diagonal(Z), value(Z).
 
-row(white) :- (cell(M,1,x)) , (cell(M,2,x)) , (cell(M,3,x)).
-row(black) :- (cell(M,1,o)) , (cell(M,2,o)) , (cell(M,3,o)).
-column(white) :- (cell(1,N,x)) , (cell(2,N,x)) , (cell(3,N,x)).
-column(black) :- (cell(1,N,o)) , (cell(2,N,o)) , (cell(3,N,o)).
-diagonal(white) :- (cell(1,1,x)) , (cell(2,2,x)) , (cell(3,3,x)).
-diagonal(white) :- (cell(3,1,x)) , (cell(2,2,x)) , (cell(1,3,x)).
-diagonal(black) :- (cell(1,1,o)) , (cell(2,2,o)) , (cell(3,3,o)).
-diagonal(black) :- (cell(3,1,o)) , (cell(2,2,o)) , (cell(1,3,o)).
-
+row(M, Z) :- cell(M, 1, Z), cell(M, 2, Z), cell(M, 3, Z).
+column(N, Z) :- cell(1, N, Z), cell(2, N, Z), cell(3, N, Z).
+diagonal(Z) :- cell(1, 1, Z), cell(2, 2, Z), cell(3, 3, Z).
+diagonal(Z) :- cell(1, 3, Z), cell(2, 2, Z), cell(3, 1, Z).
 
 terminal :- line(_).
-terminal :- \+open.
+terminal :- \+(cell(_,_,b)).
 
 open :- (cell(_,_,b)).
