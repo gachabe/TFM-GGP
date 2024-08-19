@@ -1,6 +1,6 @@
 import pyswip as ps
 from Agentes import Legal, Aleatorio, Ansioso
-from MCTS import MonteCarlo
+from Montecarlo import MonteCarlo
 from Fuzzy import Fuzzy
 
 
@@ -31,7 +31,7 @@ class Partida:
                     case "Legal":
                         instancia = Legal(rol=rol, reglas=self.ruta_reglas)
                     case "Aleatorio":
-                        instancia = Aleatorio(rol=rol, reglas= self.ruta_reglas)
+                        instancia = Aleatorio(rol=rol, reglas=self.ruta_reglas)
                     case "MonteCarlo":
                         instancia = MonteCarlo(reglas=self.ruta_reglas, rol=rol, tiempo=self.tiempo_turno)
                     case "Fuzzy":
@@ -148,9 +148,9 @@ class Partida:
         return
 
 
-A = Partida("tic-tac-toe", agentes=["Fuzzy", "MonteCarlo"], tiempo_turno=0.25)
+A = Partida("tic-tac-toe", agentes=["Legal", "MonteCarlo"], tiempo_turno=0.25)
 
 
 #A = Partida("Juego_vida", agentes=[], tiempo_turno=0.25)
 
-A.jugar_partida(muestra=True, n_partidas=2)
+A.jugar_partida(muestra=False, n_partidas=2)

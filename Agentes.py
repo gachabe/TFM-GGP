@@ -35,7 +35,7 @@ class Agentes:
         query.close()
         return roles
 
-    def generar_estado(self,estado,accion):
+    def generar_estado(self, estado, accion):
         if not estado:
             inicio = self.prolog.query("init(X)")
             estado = [hecho["X"] for hecho in inicio]
@@ -98,7 +98,7 @@ class Aleatorio(Agentes):
     def __init__(self, rol=None, acciones=None,reglas = None):
         super().__init__(rol, acciones, reglas)
 
-    def turno(self,estado):
+    def turno(self, estado):
         return choice(self.acciones)
 
 class Ansioso(Agentes):
@@ -147,11 +147,7 @@ class Ansioso(Agentes):
     def escoger_accion(self, acciones):
         return [x for x in acciones if x[0] == self.rol][0][1]
 
-
-
-
-
-    def generar_recompensa(self,estado):
+    def generar_recompensa(self, estado):
         def aux():
             recompensa = []
             for roles in self.roles:

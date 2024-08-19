@@ -64,7 +64,7 @@ class MonteCarlo(Agentes):
                     return (est, self.generar_valor(dic), dic)
                 else:
                     dic.update({accion: generar_hoja((estN, self.generar_valor(dic), {}))})
-                    return (est, self.generar_valor(dic),dic)
+                    return (est, self.generar_valor(dic), dic)
         tinicio = time()
         while self.tiempo > time() - tinicio:
             if arbol is None: #Comienza el algoritmo
@@ -77,12 +77,11 @@ class MonteCarlo(Agentes):
             else:
                 generar_hoja(arbol)
         est, valor, dic = arbol
-        arbol = (est,self.generar_valor(dic), dic)
+        arbol = (est, self.generar_valor(dic), dic)
         return arbol
 
 
     def generar_recompensa(self, estados):
-        self.prolog.consult(self.reglas, catcherrors=True)
         def aux():
             query = self.prolog.query(f"goal({self.rol},X)")
             recompensa = 0
