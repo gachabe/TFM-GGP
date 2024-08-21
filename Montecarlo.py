@@ -24,7 +24,7 @@ class MonteCarlo(Agentes):
     def reset(self):
         self.arbol = None
 
-    def turno(self, estado):
+    def turno(self,estado):
         """
         Esta función gestiona el turno del agente, primero comprueba si existe un árbol, en ese caso si ha
         habido un turno previo intenta ir a ese subarbol para seguir generando pruebas de forma aleatoria.
@@ -36,10 +36,11 @@ class MonteCarlo(Agentes):
                 self.arbol = self.arbol[2][self.acciones_contrarias]
             except KeyError as e:
                 self.arbol = None
-        self.arbol = self.generar_arbol(arbol = self.arbol, estado=estado)
+        self.arbol = self.generar_arbol(arbol = self.arbol)
         dic = self.arbol[2]
         acciones = [(x, y[1]) for x, y in dic.items() if y[1][1] != 0]
-        lista_ordenada = sorted(acciones, key=lambda x: (x[1][0]/x[1][1], x[1][1]), reverse=True)
+        lista_ordenada = sorted(acciones, key=lambda x: (-x[1][0]/x[1][1], x[1][1]))
+        print(lista_ordenada)
         eleccion = lista_ordenada[0]
         turno = [x for x in eleccion[0] if x[0] == self.rol][0][1]
         return turno
@@ -98,7 +99,7 @@ class MonteCarlo(Agentes):
             dicc.update({accion:sub_arbol for accion,sub_arbol in zip(dicc,lista_sub)})
             return est, (contador, visitados), dicc
 
-    def generar_arbol(self, arbol=None, estado=None):
+    def generar_arbol(self, arbol=None):
         if self.arbol is None:
             estado = []
             inicio = self.prolog.query("init(X)")
@@ -121,8 +122,8 @@ class MonteCarlo(Agentes):
             return recompensa
         return self.conHecho(estados, aux)
 
-#Alberto = MonteCarlo("white",reglas="juegos/tic-tac-toe.pl",tiempo=0.1)
+Alberto = MonteCarlo("white",reglas="juegos/tic-tac-toe.pl",tiempo=0.25)
 #print(Alberto.simula_partida(["col(1,1)","col(2,1)","col(3,0)","control(uno)"]))
 #A = Alberto.sel_exp((['col(1, 3)', 'col(2, 2)', 'col(3, 1)', 'control(uno)'], (0, 1), {(('uno', 'take(1, 1)'), ('dos', 'noop')): (['col(1, 2)', 'col(2, 2)', 'col(3, 1)', 'control(dos)'], (0, 0), {}), (('uno', 'take(1, 2)'), ('dos', 'noop')): (['col(1, 1)', 'col(2, 2)', 'col(3, 1)', 'control(dos)'], (0, 1), {}), (('uno', 'take(1, 3)'), ('dos', 'noop')): (['col(1, 0)', 'col(2, 2)', 'col(3, 1)', 'control(dos)'], (0, 0), {}), (('uno', 'take(2, 1)'), ('dos', 'noop')): (['col(2, 1)', 'col(1, 3)', 'col(3, 1)', 'control(dos)'], (0, 0), {}), (('uno', 'take(2, 2)'), ('dos', 'noop')): (['col(2, 0)', 'col(1, 3)', 'col(3, 1)', 'control(dos)'], (0, 0), {}), (('uno', 'take(3, 1)'), ('dos', 'noop')): (['col(3, 0)', 'col(1, 3)', 'col(2, 2)', 'control(dos)'], (0, 0), {})}))
 #print(Alberto.retropropagacion(A))
-#print(Alberto.turno(['col(1, 3)', 'col(2, 2)', 'col(3, 1)', 'control(uno)']))
+print(Alberto.turno(['col(1, 3)', 'col(2, 2)', 'col(3, 1)', 'control(uno)']))
