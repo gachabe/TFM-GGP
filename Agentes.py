@@ -51,16 +51,6 @@ class Agentes:
             return estado
         return self.conHecho(estado, aux)
 
-    def conHecho(self, estado, f):
-        try:
-            for hecho in estado:
-                self.prolog.assertz(hecho)
-            return f()
-        finally:
-            for hecho in estado:
-                self.prolog.retract(hecho)
-
-
     def generar_lista_acciones(self, estado = []):
         """
            Devuelve una lista de duplas, cada elemento de la dupla es un rol y una accion posible
@@ -80,6 +70,15 @@ class Agentes:
             lista_acciones = list(product(*valores))
             return lista_acciones
         return self.conHecho(estado, aux)
+
+    def conHecho(self, estado, f):
+        try:
+            for hecho in estado:
+                self.prolog.assertz(hecho)
+            return f()
+        finally:
+            for hecho in estado:
+                self.prolog.retract(hecho)
 
 class Legal(Agentes):
     """

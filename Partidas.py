@@ -137,8 +137,8 @@ class Partida:
                 if muestra:
                     print(estado)
                 final = self.final(estado)
-            ganador = self.ganador(estado)
             try:
+                ganador = self.ganador(estado)
                 cuentas[ganador] += 1
             except:
                 pass
@@ -148,9 +148,9 @@ class Partida:
         return
 
 
-A = Partida("tic-tac-toe", agentes=["Legal", "MonteCarlo"], tiempo_turno=0.25)
+A = Partida("light-out", agentes=["Fuzzy"], tiempo_turno=0.005)
 
 
 #A = Partida("Juego_vida", agentes=[], tiempo_turno=0.25)
 
-A.jugar_partida(muestra=False, n_partidas=2)
+A.jugar_partida(muestra=True, n_partidas=1)

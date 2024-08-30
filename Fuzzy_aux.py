@@ -15,35 +15,32 @@ def abrir_archivo(juego):
 
 def goal_rol(rol, juego):
     proposiciones = abrir_archivo(juego)
-    resultado = []
+    reglas = []
     recompensas = []
     query = f"goal({rol}"
     for proposicion in proposiciones:
-        if "goal" in proposicion:
+        if  proposicion.startswith("goal"):
             if query in proposicion:
                 recompensas.append(proposicion.split(" :-")[0])
-                resultado.append(proposicion)
+                reglas.append(proposicion)
         else:
-            resultado.append(proposicion)
-    return recompensas, resultado
+            reglas.append(proposicion)
+    return recompensas, reglas
 
 
 def list2dict(lista):
     def unir_funciones_segmentadas(segmentos):
         funciones_completas = []
         funcion_actual = ""
-
         for i, segmento in enumerate(segmentos):
             if ")" not in segmento:
                 funcion_actual += segmento + ","
             else:
-
                 funcion_actual += segmento
             # Verifica si es el final de una función segmentada (asumimos que una función completa termina en ').')
             if funcion_actual.endswith(')'):
                 funciones_completas.append(funcion_actual.strip())
                 funcion_actual = ""  # Reinicia la variable para la siguiente función
-
         # Si hay alguna función no terminada al final, añadirla también
         if funcion_actual:
             funciones_completas.append(funcion_actual.strip())
@@ -59,29 +56,25 @@ def list2dict(lista):
     return reglas
 
 
-def parse_funcion(funcion):
+def separa_funcion(function):
     # Encontrar el nombre de la función y la parte de los argumentos
-    name_end_idx = funcion.find('(')
-    name = funcion[:name_end_idx]
-
-    # Extraer los argumentos y eliminamos los paréntesis
-    args_str = funcion[name_end_idx + 1:-1]
-    if args_str.endswith(")"):
-        args_str = funcion[name_end_idx + 1:-2]
-
+    fin_nombre = function.find('(')
+    nombre = function[:fin_nombre]
+    # Extraer los argumentos y eliminar los paréntesis
+    argumentos_str = function[fin_nombre + 1:-1]
+    if argumentos_str.endswith(")"):
+        argumentos_str = function[fin_nombre + 1:-2]
     # Separar los argumentos por comas
-    args = [arg.strip() for arg in args_str.split(',')]
+    argumentos = [arg.strip() for arg in argumentos_str.split(',')]
+    return nombre, argumentos
 
-    return name, args
 
 
-def build_funcion(name, args):
+def crear_funcion(name, args):
     # Unir los argumentos en una cadena separada por comas
     args_str = ', '.join(args)
-
     # Construir la representación de la función como cadena
     funcion = f"{name}({args_str})"
-
     return funcion
 
 
@@ -89,11 +82,11 @@ def sustitucion(funcion, valores):
     """
     Dada una funcion f(x,y,z) y una lista de tuplas [(X,x), (Y,y),...] cambia las ocurrencias en f de la lista
     """
-    funcion, argumentos = parse_funcion(funcion)
+    funcion, argumentos = separa_funcion(funcion)
     for i, argumento in enumerate(argumentos):
         if argumento in valores:
             argumentos[i] = valores[argumento]
-    return build_funcion(funcion, argumentos)
+    return crear_funcion(funcion, argumentos)
 
 
 def busca_funciones(funcion, diccionario):
@@ -115,12 +108,12 @@ def busca_funciones(funcion, diccionario):
             return sustituciones_legibles
         return []
 
-    f, argumentos = parse_funcion(funcion)
+    f, argumentos = separa_funcion(funcion)
     string = "[" + ", ".join(argumentos) + "]"
     unificados = []
 
     for cuerpo, cabeza in diccionario.items():
-        f2, argumentos2 = parse_funcion(cabeza)
+        f2, argumentos2 = separa_funcion(cabeza)
         string2 = "[" + ", ".join(argumentos2) + "]"
         query = list(prolog.query(f"unificar_funciones(f({f},{string}),f({f2},{string2}),Sustituciones)."))
         sustituciones = procesar_sustituciones(query)

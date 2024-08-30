@@ -11,7 +11,7 @@ base(control(uno)).
 base(control(dos)).
 input(R, take(M,N)) :- role(R) , columna(M) , cantidad(N).
 input(R, noop) :- role(R).
-init(col(1, 3)).
+init(col(1, 4)).
 init(col(2, 2)).
 init(col(3, 1)).
 init(control(uno)).
@@ -22,10 +22,10 @@ next(col(M,Z)) :- does(_,take(M,N)) , (col(M,Y)),cantidad(N),Z is Y-N.
 next(col(M,N)) :- (col(M,N)), does(_,take(J,_)), (not(J = M)).
 next(control(uno)) :- (control(dos)).
 next(control(dos)) :- (control(uno)).
-goal(uno, 100) :- ganar(uno), \+ganar(dos).
-goal(dos, 0) :-  ganar(uno), \+ganar(dos).
-goal(uno, 0) :-  ganar(dos), \+ganar(uno).
-goal(dos, 100) :-  ganar(dos), \+ganar(uno).
+goal(uno, 100) :- ganar(uno).
+goal(dos, 0) :-  ganar(uno).
+goal(uno, 0) :-  ganar(dos).
+goal(dos, 100) :-  ganar(dos).
 ganar(W):-col(1, 0),col(2, 0),col(3, 0),control(W).
 terminal :- ganar(_).
 

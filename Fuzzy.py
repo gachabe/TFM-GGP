@@ -1,23 +1,24 @@
 from Agentes import Agentes
 from Fuzzy_aux import *
 from functools import reduce
-from itertools import product, chain, combinations
+from itertools import chain, combinations
 from pyswip import Prolog
 
 class Fuzzy(Agentes):
 
-    tau = 0.9
 
-    def __init__(self, rol=None, acciones=None, reglas=None, tiempo=None, valor=None):
-        super().__init__(rol, acciones,reglas)
+
+    def __init__(self, rol=None, acciones=None, reglas=None, tiempo=None, valor=0.9, theta=0.51):
+        super().__init__(rol, acciones, reglas)
         self.prolog = Prolog()
         self.rol = rol
         self.acciones = acciones
         self.prolog.consult(self.reglas, catcherrors=True)
         self.tiempo = tiempo
         self.acciones_contrarias = None
-        self.t_norma = lambda x, y: x * y # Cambiarla cuando me entere de la disyuncion
-        self.valor = valor if valor is not None else self.tau
+        self.theta = theta
+        self.t_norma = lambda a, b: max(a * b, self.theta) if min(a, b) > 0.5 else a * b
+        self.valor = valor
         self.diccionario = list2dict(goal_rol(self.rol, self.reglas)[1])
 
     def turno(self, estado):
@@ -28,17 +29,16 @@ class Fuzzy(Agentes):
                 return accion
 
 
-    def calcula_valor_estado(self, estado, calculo): # Mejorar cuando entienda la disyuncion con t-normas
-        if calculo.startswith("\\+"):
-            return 1 - self.calcula_valor_estado(estado, calculo[2:])
-        imagen = busca_funciones(calculo, self.diccionario)
+    def calcula_valor_estado(self, estado, objetivo):
+        if objetivo.startswith("\\+"):
+            return 1 - self.calcula_valor_estado(estado, objetivo[2:])
+        imagen = busca_funciones(objetivo, self.diccionario)
         if not imagen:
-
-            return self.tau if calculo in estado else 1 - self.tau
+            return self.valor if objetivo in estado else 1 - self.valor
 
         else:
             if len(imagen) == 1:
-                lista = [self.calcula_valor_estado(estado,x) for x in imagen[0]]
+                lista = [self.calcula_valor_estado(estado, x) for x in imagen[0]]
                 return reduce(self.t_norma, lista)
 
             else:
@@ -50,7 +50,7 @@ class Fuzzy(Agentes):
 
     def valor_esperado_puntuacion(self, estado):
         def calcular_valor_esperado(tupla):
-            valores = [int(parse_funcion(valor)[1][-1])/100 for valor in tupla]
+            valores = [int(separa_funcion(valor)[1][-1])/100 for valor in tupla]
             acum = 1
             for valor in valores:
                 acum *= valor
@@ -62,10 +62,11 @@ class Fuzzy(Agentes):
                 acum *= probabilidad
             return acum
         recompensas = goal_rol(self.rol, self.reglas)[0]
-        recompensas = [recompensa for recompensa in recompensas if parse_funcion(recompensa)[1][-1] != "0"]
-        combinaciones = list(chain(*[[combinacion for combinacion in combinations(recompensas, r)] for r in range(1, len(recompensas)+1)]))
-        #print([(calcular_probabilidad(tupla) ,calcular_valor_esperado(tupla)) for tupla in combinaciones])
-        valor_esperado =100* sum([((-1)**(1+len(tupla)))*calcular_probabilidad(tupla)*calcular_valor_esperado(tupla) for tupla in combinaciones])
+        recompensas = [recompensa for recompensa in recompensas if separa_funcion(recompensa)[1][-1] != "0"]
+        combinaciones = list(chain(*[[combinacion for combinacion in combinations(recompensas, r)]
+                                     for r in range(1, len(recompensas)+1)]))
+        valor_esperado =100* sum([((-1)**(1+len(tupla)))*calcular_probabilidad(tupla)*calcular_valor_esperado(tupla)
+                                  for tupla in combinaciones])
 
         return valor_esperado
 
