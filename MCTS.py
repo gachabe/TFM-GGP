@@ -1,3 +1,7 @@
+"""
+ Este agente, aunque funcional, realiza un mal algoritmo de Montecarlo, lo dejo aqui de manera anecdotica
+"""
+
 from Agentes import Agentes
 from time import time
 from random import choice
