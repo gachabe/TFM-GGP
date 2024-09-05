@@ -207,12 +207,7 @@ def visualize(root, indent=0):
     else:
         print("-"*indent + repr(root))
 
-#str = {(('uno', 'take(1, 1)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): {(('uno', 'take(1, 1)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}, (('uno', 'noop'), ('dos', 'take(1, 2)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 2)'), ('dos', 'noop')): {(('uno', 'noop'), ('dos', 'take(1, 1)')): [('uno', 0), ('dos', 100)]}, (('uno', 'take(1, 3)'), ('dos', 'noop')): [('uno', 100), ('dos', 0)]}
-#paco = Ansioso("juegos/Nim",rol="uno")
-#print(paco.generar_estado(["control(uno)","col(1,1)","col(2,3)","col(3,5)"],(('uno', 'take(1, 1)'), ('dos', 'noop'))))
-#print(paco.generar_recompensa(["control(uno)","col(1,0)","col(2,0)","col(3,0)"]))
-#visualize(paco.generar_arbol())
-#print(paco.ramas()[0])
+
 
 
 

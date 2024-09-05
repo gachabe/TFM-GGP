@@ -79,22 +79,3 @@ class Fuzzy(Agentes):
 
 
 
-#prueba = Fuzzy("white","asione","juegos/tic-tac-toe.pl","tiempo")
-# print(prueba.calcula_valor_estado(["cell(2, 2, x)"],"goal(white,100)"))
-# print(prueba.valor_esperado_puntuacion(["cell(2, 2, x)"]))
-estado_inicial =[
-  "cell(1,1,b)",
-  "cell(1,2,b)",
-  "cell(1,3,b)",
-  "cell(2,1,b)",
-  "cell(2,2,b)",
-  "cell(2,3,b)",
-  "cell(3,1,b)",
-  "cell(3,2,b)",
-  "cell(3,3,b)",
-  "control(white)"
-]
-
-
-#print(prueba.generar_estado(estado_inicial,(('white', 'mark(1, 1)'), ('black', 'noop'))))
-#print((prueba.turno(estado_inicial)))

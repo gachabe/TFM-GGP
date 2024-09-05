@@ -79,10 +79,6 @@ class Partida:
         return self.conHecho(estado, aux)
 
     def siguiente_estado(self, estado, muestra=False):
-        """
-            Funcion que lleva el bucle principal de juego, dado un estado recibe las acciones de los jugadores
-        las simula con assert y retract y con next calcula el siguiente estado
-        """
         acciones = []
         for agente in self.agentes:
             self.buscar_acciones(estado, agente)
@@ -148,9 +144,9 @@ class Partida:
         return
 
 
-A = Partida("light-out", agentes=["Fuzzy"], tiempo_turno=0.005)
+A = Partida("tic-tac-toe", agentes=["MonteCarlo", "MonteCarlo"], tiempo_turno=0.25)
 
 
 #A = Partida("Juego_vida", agentes=[], tiempo_turno=0.25)
 
-A.jugar_partida(muestra=True, n_partidas=1)
+A.jugar_partida(muestra=False, n_partidas=10)
